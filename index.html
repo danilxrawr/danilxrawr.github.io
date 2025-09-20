@@ -1887,6 +1887,7 @@
             });
         }
         const playPauseBtn = document.getElementById('playPauseBtn');
+        const backgroundMusic = document.getElementById('BackgroundMusic');
         const musicBars = document.querySelectorAll('.music-visualizer .bar');
         let isPlaying = false;
         let audioContext;
@@ -1916,6 +1917,30 @@
                 requestAnimationFrame(createMusicVisualization);
             }
         }
+        function updateMusicVisualizer() {
+    if (!isPlaying) return;
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaElementSource(backgroundMusic);
+    const analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+    analyser.connect(audioContext.destination);
+    analyser.fftSize = 32;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    function animate() {
+        if (!isPlaying) {
+            musicBars.forEach(bar => bar.style.height = '15px');
+            audioContext.close();
+            return;
+        }
+        analyser.getByteFrequencyData(dataArray);
+        musicBars.forEach((bar, index) => {
+            const height = (dataArray[index] / 255) * 20 + 5;
+            bar.style.height = height + 'px';
+        });
+        requestAnimationFrame(animate);
+    }
+    animate();
+}
         function playNeonSound() {
             if (!audioContext) return;
             oscillator = audioContext.createOscillator();
@@ -1933,35 +1958,21 @@
             createMusicVisualization();
         }
         playPauseBtn.addEventListener('click', () => {
-            if (!audioContext) {
-                initAudio();
-            }
-            if (isPlaying) {
-                if (oscillator) {
-                    oscillator.stop();
-                    oscillator = null;
-                }
-                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-                isPlaying = false;
-                musicBars.forEach(bar => {
-                    bar.style.height = '15px';
-                });
-            } else {
-                playNeonSound();
-                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                isPlaying = true;
-                setTimeout(() => {
-                    if (isPlaying) {
-                        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-                        isPlaying = false;
-                        musicBars.forEach(bar => {
-                            bar.style.height = '15px';
-                        });
-                    }
-                }, 2000);
-            }
-            createRipple(playPauseBtn);
+    if (!isPlaying) {
+        backgroundMusic.play();
+        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        isPlaying = true;
+        updateMusicVisualizer();
+    } else {
+        backgroundMusic.pause();
+        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        isPlaying = false;
+        musicBars.forEach(bar => {
+            bar.style.height = '15px';
         });
+    }
+    createRipple(playPauseBtn);
+});
         const scrollTopBtn = document.getElementById('scrollTopBtn');
         const header = document.querySelector('.header');
         window.addEventListener('scroll', () => {
